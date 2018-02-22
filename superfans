@@ -67,7 +67,7 @@ def set(ctx, speed, zone):
     click.echo("Unable to get current fan status; exiting")
     return False
 
-  if s != 1:
+  if s != FAN_PRESET_FULL:
     click.echo("The fan controller is currently not set to Full mode (required for manual fan settings, which will otherwise be adjusted by the BMC within minutes); setting it now.")
     ctx.invoke(preset, preset='full')
     click.echo("Waiting 5 seconds to let fans spin up...")
