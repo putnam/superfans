@@ -51,7 +51,7 @@ def cli(ctx, hostname, username, password, env_password):
   ctx.obj = {'hostname' : hostname, 'username' : username, 'password' : password, 'env_password' : env_password}
 
 @cli.command()
-@click.option('--speed', '-s', required=True, help='Fan speed in %', type=click.IntRange(0, 100))
+@click.argument('speed', '-s', required=True, type=click.IntRange(0, 100))
 @click.option('--zone', '-z', default='all', help='Fan zone to target. Defaults to all.', type=click.Choice(['cpu', 'periph', 'all']))
 @click.pass_context
 def set(ctx, speed, zone):
@@ -69,7 +69,7 @@ def set(ctx, speed, zone):
 
   if s != 1:
     click.echo("The fan controller is currently not set to Full mode (required for manual fan settings, which will otherwise be adjusted by the BMC within minutes); setting it now.")
-    ctx.invoke(preset, preset=FAN_PRESET_FULL)
+    ctx.invoke(preset, preset='full')
     click.echo("Waiting 5 seconds to let fans spin up...")
     time.sleep(5)
 
