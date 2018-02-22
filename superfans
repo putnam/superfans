@@ -76,7 +76,7 @@ def set(ctx, speed, zone):
   ok = True
   if zone == 'all' or zone == 'cpu':
     ok = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x01 0x00 0x%02x' % speed)
-  if zone == 'all' or zone == 'periph':
+  if ok and (zone == 'all' or zone == 'periph'):
     ok = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x01 0x01 0x%02x' % speed)
 
   if ok:
