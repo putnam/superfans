@@ -25,7 +25,7 @@ FAN_PRESETS_DESC={ \
 
 
 @click.group()
-@click.option('--hostname', '-h', default='localhost', help='Remote hostname (default: local)')
+@click.option('--hostname', '-h', default='localhost', help='Remote hostname (default: localhost)')
 @click.option('--username', '-u', default=None, help='Remote IPMI username')
 @click.option('--password', '-p', default=None, help='Remote IPMI password')
 @click.option('--env-password', '-e', is_flag=True, default=False, help='Use IPMI_PASSWORD environment variable for password')
@@ -42,7 +42,7 @@ def cli(ctx, hostname, username, password, env_password):
 
   For a list of presets, use `superfans preset --help`.
 
-  If needed, the hostname, username, and password options should precede commands. A hostname of "localhost" will skip IPMI over lanplus and use the kernel module instead.
+  If needed, the hostname, username, and password options should precede commands. A hostname of "localhost" (the default) will skip IPMI over lanplus and use the kernel module instead.
 
   \b
   Example:

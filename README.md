@@ -21,14 +21,14 @@ Usage: superfans [OPTIONS] COMMAND [ARGS]...
   For a list of presets, use `superfans preset --help`.
 
   If needed, the hostname, username, and password options should precede
-  commands. A hostname of "localhost" will skip IPMI over lanplus and use
-  the kernel module instead.
+  commands. A hostname of "localhost" (the default) will skip IPMI over
+  lanplus and use the kernel module instead.
 
   Example:
   ./superfans -h bigbertha -u monkey -p secrets preset full
 
 Options:
-  -h, --hostname TEXT  Remote hostname (default: local)
+  -h, --hostname TEXT  Remote hostname (default: localhost)
   -u, --username TEXT  Remote IPMI username
   -p, --password TEXT  Remote IPMI password
   -e, --env-password   Use IPMI_PASSWORD environment variable for password
@@ -39,4 +39,3 @@ Commands:
   set     Set fan speed to a fixed %.
   status  Retrieves fan controller preset & fan speed.
 ```
-
