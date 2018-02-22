@@ -1,5 +1,8 @@
 # superfans
 Tools for managing fans on Supermicro chassis via IPMI.
+
+Requires ipmitool, python3 and click (pip3 install click)
+
 ```
 Usage: superfans [OPTIONS] COMMAND [ARGS]...
 
