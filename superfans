@@ -3,34 +3,52 @@
 # superfans
 # https://github.com/putnam/superfans
 #
-import sys, click, subprocess, time, shutil
+import sys, click, subprocess, time, shutil, shlex
 
 FAN_PRESET_STANDARD=0
 FAN_PRESET_FULL=1
 FAN_PRESET_OPTIMAL=2
 FAN_PRESET_HEAVYIO=4
 FAN_PRESETS=[FAN_PRESET_STANDARD, FAN_PRESET_FULL, FAN_PRESET_OPTIMAL, FAN_PRESET_HEAVYIO]
-FAN_PRESETS_STR={ \
+FAN_PRESETS_STR={\
+  'standard' : FAN_PRESET_STANDARD,\
+  'full' : FAN_PRESET_FULL,\
+  'optimal' : FAN_PRESET_OPTIMAL,\
+  'heavyio' : FAN_PRESET_HEAVYIO\
+}
+FAN_PRESETS_DESC={ \
   FAN_PRESET_STANDARD : "Standard (Temp controlled, target 50%)", \
   FAN_PRESET_FULL : "Full (All fans at 100%)", \
   FAN_PRESET_OPTIMAL : "Optimal (Temp controlled, target 30%)", \
   FAN_PRESET_HEAVYIO : "Heavy IO (Temp controlled, CPU target 50%; Peripherals target 75%" \
 }
 
+
 @click.group()
-@click.option('--hostname', '-h', default='localhost')
+@click.option('--hostname', '-h', default='localhost', help='Remote hostname (default: local)')
+@click.option('--username', '-u', default=None, help='Remote IPMI username')
+@click.option('--password', '-p', default=None, help='Remote IPMI password')
+@click.option('--env-password', '-e', is_flag=True, default=False, help='Use IPMI_PASSWORD environment variable for password')
 @click.pass_context
-def cli(ctx, hostname):
-  """ 
+def cli(ctx, hostname, username, password, env_password):
+  """
   Tools for managing fans on a Supermicro chassis.
 
   Fan presets can be adjusted, or fans manually updated to a certain speed.
 
+  If a hostname is specified, superfans will use the specified username and password to connect. If a hostname is not specified, ipmitool will talk to the local machine using the IPMI kernel module.
+
   When setting fan speed manually, the fan preset must be set to Full, or else the hardware fan controller will automatically adjust the speed again after some time has passed.
 
-  For a list of presets, try `superfans preset --help`.
+  For a list of presets, use `superfans preset --help`.
+
+  If needed, the hostname, username, and password options should precede commands. A hostname of "localhost" will skip IPMI over lanplus and use the kernel module instead.
+
+  \b
+  Example:
+  ./superfans -h bigbertha -u monkey -p secrets preset full
   """
-  ctx.obj = {'hostname' : hostname}
+  ctx.obj = {'hostname' : hostname, 'username' : username, 'password' : password, 'env_password' : env_password}
 
 @cli.command()
 @click.option('--speed', '-s', required=True, help='Fan speed in %', type=click.IntRange(0, 100))
@@ -42,9 +60,9 @@ def set(ctx, speed, zone):
 
   Some chassis implement separate fan "zones" named CPU and Peripheral. To target specific zones, use the --zone option.
   """
-  
+
   # Make sure fans are on Full setting, or else this won't stick for long
-  s = get_fan_status(ctx.obj['hostname'])
+  s = get_fan_status(ctx.obj)
   if s == False:
     click.echo("Unable to get current fan status; exiting")
     return False
@@ -57,9 +75,9 @@ def set(ctx, speed, zone):
 
   ok = True
   if zone == 'all' or zone == 'cpu':
-    ok = ipmi_raw_cmd(ctx.obj['hostname'], '0x30 0x70 0x66 0x01 0x00 0x%02x' % speed)
+    ok = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x01 0x00 0x%02x' % speed)
   if zone == 'all' or zone == 'periph':
-    ok = ipmi_raw_cmd(ctx.obj['hostname'], '0x30 0x70 0x66 0x01 0x01 0x%02x' % speed)
+    ok = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x01 0x01 0x%02x' % speed)
 
   if ok:
     click.echo("Set %s fans on %s to %d%%." % (zone, ctx.obj['hostname'], speed))
@@ -74,19 +92,19 @@ def status(ctx):
   """
   Retrieves fan controller preset & fan speed.
   """
-  status = get_fan_status(ctx.obj['hostname'])
+  status = get_fan_status(ctx.obj)
   if status == False:
     return False
   if status in FAN_PRESETS:
-    s = FAN_PRESETS_STR[status]
+    s = FAN_PRESETS_DESC[status]
   else:
     s = "Unknown status code %d" % status
   # manual fan ctl     get(0)/set(1)  cpu(0)/periph(1)   duty(0-0x64)
   # 0x30 0x70 0x66     0x00           0x00               0x64
-  fan_speed = ipmi_raw_cmd(ctx.obj['hostname'], '0x30 0x70 0x66 0x00 0x00')
+  fan_speed = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x00 0x00')
   if fan_speed == False:
     return False
-  fan_speed2 = ipmi_raw_cmd(ctx.obj['hostname'], '0x30 0x70 0x66 0x00 0x01')
+  fan_speed2 = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x00 0x01')
   if fan_speed2 == False:
     return False
 
@@ -95,34 +113,48 @@ def status(ctx):
   click.echo("Current fan speed (Peripheral zone): %d%%" % int(fan_speed2, 16))
   return True
 
-@cli.command()
-@click.option('--preset', '-p', type=click.IntRange(FAN_PRESET_STANDARD, FAN_PRESET_HEAVYIO), required=True, help="0=standard,1=full,2=optimal,4=heavyio")
+
+PRESET_HELP = """
+Applies a factory preset to fan controller.
+
+\b
+Known presets:
+"""
+for ps in FAN_PRESETS_STR.keys():
+  PRESET_HELP += "  %s: %s\n" % (ps, FAN_PRESETS_DESC[FAN_PRESETS_STR[ps]])
+
+@cli.command(help=PRESET_HELP)
+@click.argument('preset', type=click.Choice(FAN_PRESETS_STR.keys()), required=True)
 @click.pass_context
 def preset(ctx, preset):
-  """
-  Applies preset to fan controller.
-  """
-
-  if preset not in FAN_PRESETS:
+  if preset not in FAN_PRESETS_STR:
     return False
-  if ipmi_raw_cmd(ctx.obj['hostname'], "0x30 0x45 0x01 0x0%d" % preset):
+  preset = FAN_PRESETS_STR[preset]
+
+  if ipmi_raw_cmd(ctx.obj, "0x30 0x45 0x01 0x0%d" % preset):
     click.echo("Updated preset on %s." % ctx.obj['hostname'])
     return True
-  
+
   return False
 
-def ipmi_raw_cmd(hostname, raw_cmd):
+def ipmi_raw_cmd(config, raw_cmd, username=None, password=None):
+  hostname, username, password, use_env = (config['hostname'], config['username'], config['password'], config['env_password'])
+
   if hostname == 'localhost':
     cmd = 'ipmitool raw %s' % raw_cmd
   else:
-    cmd = 'ipmitool -I lanplus -U putnam -a -H %s raw %s' % (hostname, raw_cmd)
+    if use_env:
+      cmd_pass = '-E'
+    else:
+      cmd_pass = '-P %s' % shlex.quote(password)
+    cmd = 'ipmitool -I lanplus -U %s %s -H %s raw %s' % (shlex.quote(username), cmd_pass, hostname, raw_cmd)
 
-  s = subprocess.run(['bash', '-c', cmd + " 2>&1"], stdout=subprocess.PIPE)
+  s = subprocess.run(cmd + " 2>&1", shell=True, stdout=subprocess.PIPE)
   if s.returncode != 0:
-    print("Error: Problem running ipmitool (are you root?)")
-    print("Command: %s" % cmd)
-    print("Return code: %d" % s.returncode)
-    print("Output: %s" % s.stdout.decode('utf-8').strip())
+    click.echo("Error: Problem running ipmitool (are you root?)")
+    click.echo("Command: %s" % cmd)
+    click.echo("Return code: %d" % s.returncode)
+    click.echo("Output: %s" % s.stdout.decode('utf-8').strip())
     return False
 
   out = s.stdout.strip()
@@ -131,16 +163,14 @@ def ipmi_raw_cmd(hostname, raw_cmd):
   else:
     return True
 
-def get_fan_status(hostname):
+def get_fan_status(config):
   try:
-    s = ipmi_raw_cmd(hostname, '0x30 0x45 0x00')
+    s = ipmi_raw_cmd(config, '0x30 0x45 0x00')
     if s == False:
       return False
     return int(s)
   except:
     return False
-
-
 
 if __name__ == '__main__':
   if not shutil.which('ipmitool'):
