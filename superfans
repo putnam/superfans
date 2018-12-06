@@ -98,7 +98,7 @@ def status(ctx):
   Retrieves fan controller preset & fan speed.
   """
   status = get_fan_status(ctx.obj)
-  if status == False:
+  if status is False:
     return False
   if status in FAN_PRESETS:
     s = FAN_PRESETS_DESC[status]
