@@ -57,14 +57,11 @@ def cli(ctx, hostname, username, password, env_password):
   """
   ctx.obj = {'hostname' : hostname, 'username' : username, 'password' : password, 'env_password' : env_password}
 
-  if hostname == 'localhost':
-    if os.geteuid() != 0:
-      click.echo("In order to communicate with the kernel's IPMI module, you must be root.")
-      sys.exit(1)
+
 
 @cli.command()
 @click.argument('speed', required=True, type=click.IntRange(0, 100))
-@click.option('--zone', '-z', default='all', help='Fan zone to target. Defaults to all.', type=click.Choice(['cpu', 'periph', 'all']))
+@click.option('--zone', '-z', default='all', help='Fan zone to target. Fans ending with a number are in the CPU zone; fans ending with a letter are in the peripheral zone. Default: all.', type=click.Choice(['cpu', 'periph', 'all']))
 @click.pass_context
 def set(ctx, speed, zone):
   """
@@ -153,6 +150,9 @@ def ipmi_raw_cmd(config, raw_cmd, username=None, password=None):
   hostname, username, password, use_env = (config['hostname'], config['username'], config['password'], config['env_password'])
 
   if hostname == 'localhost':
+    if os.geteuid() != 0:
+      click.echo("In order to communicate with the kernel's IPMI module, you must be root.")
+      sys.exit(1)
     cmd = 'ipmitool raw %s' % raw_cmd
   else:
     if use_env:
