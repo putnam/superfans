@@ -107,10 +107,10 @@ def status(ctx):
   # manual fan ctl     get(0)/set(1)  cpu(0)/periph(1)   duty(0-0x64)
   # 0x30 0x70 0x66     0x00           0x00               0x64
   fan_speed = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x00 0x00')
-  if fan_speed == False:
+  if fan_speed is False:
     return False
   fan_speed2 = ipmi_raw_cmd(ctx.obj, '0x30 0x70 0x66 0x00 0x01')
-  if fan_speed2 == False:
+  if fan_speed2 is False:
     return False
 
   click.echo("Preset: %s" % s)
@@ -171,7 +171,7 @@ def ipmi_raw_cmd(config, raw_cmd, username=None, password=None):
 def get_fan_status(config):
   try:
     s = ipmi_raw_cmd(config, '0x30 0x45 0x00')
-    if s == False:
+    if s is False:
       return False
     return int(s)
   except:
