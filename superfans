@@ -68,7 +68,7 @@ def set(ctx, speed, zone):
 
   # Make sure fans are on Full setting, or else this won't stick for long
   s = get_fan_status(ctx.obj)
-  if s == False:
+  if s is False:
     click.echo("Unable to get current fan status; exiting")
     return False
 
