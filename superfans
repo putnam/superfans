@@ -3,7 +3,7 @@
 # superfans
 # https://github.com/putnam/superfans
 #
-import sys, click, subprocess, time, shutil, shlex
+import os, sys, click, subprocess, time, shutil, shlex
 
 FAN_PRESET_STANDARD=0
 FAN_PRESET_FULL=1
@@ -36,7 +36,7 @@ def cli(ctx, hostname, username, password, env_password):
 
   Fan presets can be adjusted, or fans manually updated to a certain speed.
 
-  If a hostname is specified, superfans will use the specified username and password to connect. If a hostname is not specified, ipmitool will talk to the local machine using the IPMI kernel module.
+  If a hostname is specified, superfans will use the specified username and password to connect. If a hostname is not specified, ipmitool will talk to the local machine using the IPMI kernel module (you must be root).
 
   When setting fan speed manually, the fan preset must be set to Full, or else the hardware fan controller will automatically adjust the speed again after some time has passed.
 
@@ -49,6 +49,11 @@ def cli(ctx, hostname, username, password, env_password):
   ./superfans -h bigbertha -u monkey -p secrets preset full
   """
   ctx.obj = {'hostname' : hostname, 'username' : username, 'password' : password, 'env_password' : env_password}
+
+  if hostname == 'localhost':
+    if os.geteuid() != 0:
+      click.echo("In order to communicate with the kernel's IPMI module, you must be root.")
+      sys.exit(1)
 
 @cli.command()
 @click.argument('speed', required=True, type=click.IntRange(0, 100))
@@ -151,7 +156,7 @@ def ipmi_raw_cmd(config, raw_cmd, username=None, password=None):
 
   s = subprocess.run(cmd + " 2>&1", shell=True, stdout=subprocess.PIPE)
   if s.returncode != 0:
-    click.echo("Error: Problem running ipmitool (are you root?)")
+    click.echo("Error: Problem running ipmitool")
     click.echo("Command: %s" % cmd)
     click.echo("Return code: %d" % s.returncode)
     click.echo("Output: %s" % s.stdout.decode('utf-8').strip())
