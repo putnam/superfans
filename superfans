@@ -45,8 +45,15 @@ def cli(ctx, hostname, username, password, env_password):
   If needed, the hostname, username, and password options should precede commands. A hostname of "localhost" (the default) will skip IPMI over lanplus and use the kernel module instead.
 
   \b
-  Example:
+  EXAMPLE
   ./superfans -h bigbertha -u monkey -p secrets preset full
+
+  NOTES
+
+  * Some fancy PWM fans are capable at running at very low RPMs. The Supermicro BIOS considers a tachometer reading of 400-600RPM to  be "too low" and considers it a fault, resulting in the fan being adjusted automatically to 100%. If you experience this behavior you can either stick to a duty cycle above 30-40%, or adjust your sensor thresholds using ipmitool. For more info see: https://calvin.me/quick-how-to-decrease-ipmi-fan-threshold/
+
+  * Once a fan is plugged in (either at boot or hotplugged), if that same fan is unplugged the system will automatically ramp all fans up to 100% until the missing fan is replaced or the BMC is reset. Commands you send during this time will be honored only briefly and immediately overridden.
+
   """
   ctx.obj = {'hostname' : hostname, 'username' : username, 'password' : password, 'env_password' : env_password}
 
