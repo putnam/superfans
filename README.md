@@ -1,6 +1,10 @@
 # superfans
 Tools for managing fans on Supermicro chassis via IPMI.
 
+This has been tested successfully on X10 and X11 boards as well as the 
+CSE-PTJBOD-CS3 management board. Please report compatibility issues at:
+https://github.com/putnam/superfans/issues
+
 Requires ipmitool, python3 and click (pip3 install click)
 
 ```
