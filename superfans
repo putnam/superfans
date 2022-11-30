@@ -161,7 +161,7 @@ def ipmi_raw_cmd(config, raw_cmd, username=None, password=None):
       cmd_pass = '-P %s' % shlex.quote(password)
     cmd = 'ipmitool -I lanplus -U %s %s -H %s raw %s' % (shlex.quote(username), cmd_pass, hostname, raw_cmd)
 
-  s = subprocess.run(cmd + " 2>&1", shell=True, stdout=subprocess.PIPE)
+  s = subprocess.run(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
   if s.returncode != 0:
     click.echo("Error: Problem running ipmitool")
     click.echo("Command: %s" % cmd)
